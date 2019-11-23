@@ -70,7 +70,7 @@ async def async_setup(hass, config):
     hass.http.register_view(ConversationProcessView())
     hass.http.register_view(ConversationHandleView())
     hass.components.websocket_api.async_register_command(websocket_process)
-    hass.components.websocket_api.async_register_command(websocket__get_agent_info)
+    hass.components.websocket_api.async_register_command(websocket_get_agent_info)
     hass.components.websocket_api.async_register_command(websocket_set_onboarding)
 
     return True
@@ -92,7 +92,7 @@ async def websocket_process(hass, connection, msg):
 
 @websocket_api.async_response
 @websocket_api.websocket_command({"type": "conversation/agent/info"})
-async def websocket__get_agent_info(hass, connection, msg):
+async def websocket_get_agent_info(hass, connection, msg):
     """Do we need onboarding."""
     agent = await _get_agent(hass)
 
