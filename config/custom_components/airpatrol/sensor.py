@@ -12,7 +12,6 @@ from . import DOMAIN
 # from custom_components.airpatrol import DOMAIN as AIRPATROL_DOMAIN, AirPatrolDevice
 
 
-SCAN_INTERVAL = timedelta(seconds=30)
 _LOGGER = logging.getLogger(__name__)
 
 AIRPATROL_SENSORS = {
@@ -29,10 +28,19 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     _LOGGER.debug("setup_platform hass:" + str(hass))
     entities = []
+
     # load all device parameters, add as entities
+
+    hass.data[DOMAIN].update_all()  # update values
+
     params = hass.data[DOMAIN].get_params()
+    zones = hass.data[DOMAIN].get_zones()
+    diagnostic = hass.data[DOMAIN].get_diagnostic()
+    tempsensors = hass.data[DOMAIN].get_tempsensors()
+
     device = hass.data[DOMAIN]
 
+    # 1. params data
     for param, value in params["Parameters"].items():
         if value.isnumeric():
             v = float(value)
@@ -42,6 +50,47 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         sensor = AirPatrolSensor(device, param, v)
         _LOGGER.debug("added sensor " + param)
         entities.append(sensor)
+
+    # 2. temp sensors
+    for tempsensor in tempsensors["temperatureSensors"]:
+        num = tempsensor["number"]
+        name = tempsensor["name"]
+        temperature = tempsensor["temperature"]
+        if temperature != "NA":
+            v = float(temperature)
+            _LOGGER.debug("adding tempsensor " + name)
+            sensor = AirPatrolSensor(device, name, v)
+            _LOGGER.debug("added tempsensor " + name)
+            entities.append(sensor)
+        else:
+            _LOGGER.debug("NA for tempsensor " + name)
+
+    # 3. zones
+    for zone in zones["zones"]:
+        num = zone["ZoneNumber"]
+        name = zone["name"]
+        zone_parameters = zone["Parameters"]
+        _LOGGER.debug("adding zone " + name)
+        for zone_param, value in zone_parameters.items():
+            if value.isnumeric():
+                v = float(value)
+            else:
+                v = value
+            _LOGGER.debug("adding zone_param " + zone_param)
+            sensor = AirPatrolSensor(device, name + ": " + zone_param, v)
+            _LOGGER.debug("added zone_param " + zone_param)
+            entities.append(sensor)
+
+    # 4. diagnostic - something wrong?
+    # for param, value in diagnostic.items():
+    #    if value.isnumeric():
+    #        v = float(value)
+    #    else:
+    #        v = value
+    #    _LOGGER.debug("adding diag " + param)
+    #    sensor = AirPatrolSensor(device, param, v)
+    #    _LOGGER.debug("added diag " + param)
+    #    entities.append(sensor)
 
     add_entities(entities)
 
@@ -71,6 +120,8 @@ class AirPatrolSensor(Entity):
         # if Temp in name, temperature
         if "Temp" in self._name:
             return TEMP_CELSIUS
+        elif "Humidity" in self._name:
+            return "%"
         else:
             if self._name in AIRPATROL_SENSORS:
                 return AIRPATROL_SENSORS[self._name]["uom"]
@@ -80,6 +131,8 @@ class AirPatrolSensor(Entity):
     def icon(self):
         if "Temp" in self._name:
             return "mdi:thermometer"
+        elif "Humidity" in self._name:
+            return "mdi:water-percent"
         else:
             if self._name in AIRPATROL_SENSORS:
                 return AIRPATROL_SENSORS[self._name]["icon"]
@@ -87,15 +140,51 @@ class AirPatrolSensor(Entity):
         return ""
 
     def update(self):
-        # TODO: do http update in platform level, not for every sensor
         _LOGGER.debug("updating sensor " + self._name)
+        self._device.update_all()
+
+        # read latest data for all possible sensors
         params = self._device.get_params()
-        _LOGGER.debug("got params " + str(params))
+        zones = self._device.get_zones()
+        tempsensors = self._device.get_tempsensors()
+        diagnostic = self._device.get_diagnostic()
+
+        # find value from structs
+        # 1. params update
         for param, value in params["Parameters"].items():
             if param == self._name:
                 if value.isnumeric():
                     v = float(value)
                 else:
                     v = value
-                self._state = v
-        _LOGGER.debug("updated state is " + self._state)
+
+        # 2. tempSensors update
+        for tempsensor in tempsensors["temperatureSensors"]:
+            name = tempsensor["name"]
+            if name == self._name:
+                temperature = tempsensor["temperature"]
+                if temperature != "NA":
+                    v = float(temperature)
+                else:
+                    v = "NA"
+        # 3. zone update
+        for zone in zones["zones"]:
+            name = zone["name"]
+            zone_parameters = zone["Parameters"]
+            for zone_param, value in zone_parameters.items():
+                if name + ": " + zone_param == self._name:
+                    if value.isnumeric():
+                        v = float(value)
+                    else:
+                        v = value
+
+        # 4. diagnostic
+        for param, value in diagnostic.items():
+            if param == self._name:
+                if value.isnumeric():
+                    v = float(value)
+                else:
+                    v = value
+
+        # update value itself
+        self._state = v

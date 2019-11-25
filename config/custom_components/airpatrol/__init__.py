@@ -54,6 +54,10 @@ class AirPatrolDevice():
         self._devices = []
         self._updated = None
         self._params = None  # params resp
+        self._diagnostic = None
+        self._zones = None
+        self._tempsensors = None
+
         self._session = None # login resp
 
         self.SESSION_FILE = '/tmp/session_cache'
@@ -129,13 +133,41 @@ class AirPatrolDevice():
 
         return (r.json(),headers)
 
+    def update_all(self):
+        _LOGGER.debug("check if have to update")
+        if self._updated is None or (datetime.now() > (self._updated + self._scan_interval)):
+             _LOGGER.info("time to update all")
+             self._params = self.update_params()
+             self._diagnostic = self.update_diagnostic()
+             self._zones = self.update_zones()
+             self._tempsensors = self.update_sensors()
+             self._updated = datetime.now()
+             _LOGGER.debug("updated all")
+        else:
+             _LOGGER.debug("no need to update yet")
+
     def get_params(self):
         _LOGGER.debug("get_params")
-        if self._params is None or (self._updated is not None and datetime.now() > (self._updated + self._scan_interval)):
+        if self._params is None:
             return self.update_params()
 
         _LOGGER.debug("cached params returned")
         return self._params
+
+    def get_diagnostic(self):
+        if self._diagnostic is None:
+            return self.update_diagnostic()
+        return self._diagnostic
+
+    def get_zones(self):
+        if self._zones is None:
+            return self.update_zones()
+        return self._zones
+
+    def get_tempsensors(self):
+        if self._tempsensors is None:
+            return self.update_sensors
+        return self._tempsensors
 
     def update_params(self):
         _LOGGER.debug("update_params start with session " + str(self._session))
@@ -155,53 +187,21 @@ class AirPatrolDevice():
         _LOGGER.debug("update_params head "+str(self._session))
         r = requests.post(url, headers=self._session, json=req_details)
         self._params = r.json()
-        self._updated = datetime.now()
         _LOGGER.debug("update_params end")
-
-
         return self._params
 
-    def get_diagnostic(self):
+    def update_diagnostic(self):
         url = 'https://smartheat.airpatrol.eu/api/controllers/'+self._session['cid']+'/diagnostic'
         r = requests.get(url, headers=self._session)
         return r.json()
 
-    def get_zones(self):
+    def update_zones(self):
         url = 'https://smartheat.airpatrol.eu/api/controllers/'+self._session['cid']+'/zones'
         r = requests.get(url, headers=self._session)
         return r.json()
 
-    def get_sensors(self):
+    def update_sensors(self):
         url = 'https://smartheat.airpatrol.eu/api/controllers/'+self._session['cid']+'/temperature-sensors'
         r = requests.get(url, headers=self._session)
         return r.json()
-
-    def temp_sensor_list(self):
-        ap_sensors = self.get_sensors()
-        sensors = []
-        for sensor in ap_sensors["temperatureSensors"]:
-            sensors.append(sensor["name"])
-        return sensors
-
-    def zone_list(self):
-        ap_zones = self.get_zones()
-        zones = []
-        for zone in ap_zones["zones"]:
-            zones.append(zone["name"])
-        return zones
-
-    def parameter_list(self):
-        ap_params = self,get_params()
-        params = []
-        for param in ap_params["Parameters"]:
-            params.append(param)
-        return params
-
-    def diagnostic_list(self):
-        ap_diag = self.get_diagnostic()
-        params = []
-        for param in ap_diag:
-            params.append(param)
-        return params
-
 
