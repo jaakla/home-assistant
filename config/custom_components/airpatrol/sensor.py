@@ -4,7 +4,7 @@ from datetime import timedelta
 
 ##import airpatrol
 
-from homeassistant.const import TEMP_CELSIUS
+from homeassistant.const import TEMP_CELSIUS, DEVICE_CLASS_BATTERY, DEVICE_CLASS_HUMIDITY, DEVICE_CLASS_POWER, DEVICE_CLASS_SIGNAL_STRENGTH, DEVICE_CLASS_TEMPERATURE
 from homeassistant.helpers.entity import Entity
 
 from . import DOMAIN
@@ -15,9 +15,9 @@ from . import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 AIRPATROL_SENSORS = {
-    "CurrentPowerForHeatingHeatingWater": {"uom": "W", "icon": "mdi:flash-outline"},
-    "HeatingWaterFlow": {"uom": "m³/h", "icon": "mdi:swap-vertical-circle-outline"},
-    "WifiRSSI": {"uom": "dB", "icon": "mdi:antenna"},
+    "CurrentPowerForHeatingHeatingWater": {"uom": "W", "icon": "mdi:flash-outline", "class": DEVICE_CLASS_POWER},
+    "HeatingWaterFlow": {"uom": "m³/h", "icon": "mdi:swap-vertical-circle-outline", "class": ""},
+    "WifiRSSI": {"uom": "dB", "icon": "mdi:antenna", "class": DEVICE_CLASS_SIGNAL_STRENGTH},
 }
 
 
@@ -72,7 +72,9 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         zone_parameters = zone["Parameters"]
         _LOGGER.debug("adding zone " + name)
         for zone_param, value in zone_parameters.items():
-            if value.isnumeric():
+            if "HeatingStatus" == zone_param:
+                v = True if value == "1" else False
+            elif value.isnumeric():
                 v = float(value)
             else:
                 v = value
@@ -116,11 +118,28 @@ class AirPatrolSensor(Entity):
         return self._name
 
     @property
+    def device_class(self):
+        """class of device"""
+        if "Temp" in self._name:
+            return DEVICE_CLASS_TEMPERATURE
+        if "Humidity" in self._name:
+            return DEVICE_CLASS_HUMIDITY
+        if "Battery" in self._name:
+            return DEVICE_CLASS_BATTERY
+        if "RadioLink" in self._name:
+            return DEVICE_CLASS_SIGNAL_STRENGTH
+        if self._name in AIRPATROL_SENSORS:
+            return AIRPATROL_SENSORS[self._name]["class"]
+        return None
+
+    @property
     def unit_of_measurement(self):
         # if Temp in name, temperature
         if "Temp" in self._name:
             return TEMP_CELSIUS
-        elif "Humidity" in self._name:
+        if "Humidity" in self._name:
+            return "%"
+        if "Battery" in self._name:
             return "%"
         else:
             if self._name in AIRPATROL_SENSORS:
@@ -155,6 +174,8 @@ class AirPatrolSensor(Entity):
             if param == self._name:
                 if value.isnumeric():
                     v = float(value)
+                elif "Active" in param:
+                    v = True if value == "1" else False
                 else:
                     v = value
 
@@ -167,13 +188,16 @@ class AirPatrolSensor(Entity):
                     v = float(temperature)
                 else:
                     v = "NA"
+
         # 3. zone update
         for zone in zones["zones"]:
             name = zone["name"]
             zone_parameters = zone["Parameters"]
             for zone_param, value in zone_parameters.items():
                 if name + ": " + zone_param == self._name:
-                    if value.isnumeric():
+                    if "HeatingStatus" == zone_param:
+                        v = True if value == "1" else False
+                    elif value.isnumeric():
                         v = float(value)
                     else:
                         v = value
