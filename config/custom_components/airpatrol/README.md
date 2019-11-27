@@ -9,7 +9,7 @@ APIsse:
 
 HAsse:
 
-- Binary sensors separately
+- Binary sensors separately - ei ole, climate sees vaid
 - Every zone -> Climate
 - Relays -> Switches
 - Notifications ->?

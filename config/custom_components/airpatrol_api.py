@@ -4,7 +4,7 @@ from datetime import timedelta
 from datetime import datetime
 import logging
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+#logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 class AirPatrol():
     def __init__(self, username, password, scan_interval = timedelta(seconds=60), logger = logging):
@@ -28,8 +28,84 @@ class AirPatrol():
 
         self._params = self.cached_login(self._username,self._password)
 
+# Higher level object getters
     def get_cid(self):
         return self._session["cid"]
+
+# AirPatrol API Update methods:
+    def update_all(self):
+        if self._updated is None or (datetime.now() > (self._updated + self._scan_interval)):
+             self._LOGGER.info("time to update all")
+             self._params = self.update_params()
+             self._diagnostic = self.update_diagnostic()
+             self._zones = self.update_zones()
+             self._tempsensors = self.update_sensors()
+             self._updated = datetime.now()
+             self._LOGGER.debug("updated all")
+        else:
+             self._LOGGER.debug("no need to update yet")
+
+    def get_params(self):
+        self._LOGGER.debug("get_params")
+        if self._params is None:
+            return self.update_params()
+
+        self._LOGGER.debug("cached params returned")
+        return self._params
+
+    def get_diagnostic(self):
+        if self._diagnostic is None:
+            return self.update_diagnostic()
+        return self._diagnostic
+
+    def get_zones(self):
+        if self._zones is None:
+            return self.update_zones()
+        return self._zones
+
+    def get_tempsensors(self):
+        if self._tempsensors is None:
+            return self.update_sensors
+        return self._tempsensors
+
+
+### Transport methods:
+
+    def update_params(self):
+        self._LOGGER.debug("update_params start with session " + str(self._session))
+        url = 'https://smartheat.airpatrol.eu/api/controllers/' + self._session['cid'] + '/params'
+        self._LOGGER.debug("url "+url)
+        req_details = {"parameters":
+            [
+                "GlobalEcoActive",
+                "WifiRSSI",
+                "OutdoorTemp",
+                "HeatingWaterInletTemp",
+                "HeatingWaterRetTemp",
+                "HeatingWaterTempDiff",
+                "HeatingWaterFlow",
+                "CurrentPowerForHeatingHeatingWater"]
+            }
+        self._LOGGER.debug("update_params head "+str(self._session))
+        r = requests.post(url, headers=self._session, json=req_details)
+        self._params = r.json()
+        self._LOGGER.debug("update_params end")
+        return self._params
+
+    def update_diagnostic(self):
+        url = 'https://smartheat.airpatrol.eu/api/controllers/'+self._session['cid']+'/diagnostic'
+        r = requests.get(url, headers=self._session)
+        return r.json()
+
+    def update_zones(self):
+        url = 'https://smartheat.airpatrol.eu/api/controllers/'+self._session['cid']+'/zones'
+        r = requests.get(url, headers=self._session)
+        return r.json()
+
+    def update_sensors(self):
+        url = 'https://smartheat.airpatrol.eu/api/controllers/'+self._session['cid']+'/temperature-sensors'
+        r = requests.get(url, headers=self._session)
+        return r.json()
 
     def cached_login(self, username, password):
         try:
@@ -95,75 +171,3 @@ class AirPatrol():
         headers['cid'] = r.json()['user']['controllers'][0]['CID']
 
         return (r.json(),headers)
-
-    def update_all(self):
-        self._LOGGER.debug("check if have to update")
-        if self._updated is None or (datetime.now() > (self._updated + self._scan_interval)):
-             self._LOGGER.info("time to update all")
-             self._params = self.update_params()
-             self._diagnostic = self.update_diagnostic()
-             self._zones = self.update_zones()
-             self._tempsensors = self.update_sensors()
-             self._updated = datetime.now()
-             self._LOGGER.debug("updated all")
-        else:
-             self._LOGGER.debug("no need to update yet")
-
-    def get_params(self):
-        self._LOGGER.debug("get_params")
-        if self._params is None:
-            return self.update_params()
-
-        self._LOGGER.debug("cached params returned")
-        return self._params
-
-    def get_diagnostic(self):
-        if self._diagnostic is None:
-            return self.update_diagnostic()
-        return self._diagnostic
-
-    def get_zones(self):
-        if self._zones is None:
-            return self.update_zones()
-        return self._zones
-
-    def get_tempsensors(self):
-        if self._tempsensors is None:
-            return self.update_sensors
-        return self._tempsensors
-
-    def update_params(self):
-        self._LOGGER.debug("update_params start with session " + str(self._session))
-        url = 'https://smartheat.airpatrol.eu/api/controllers/' + self._session['cid'] + '/params'
-        self._LOGGER.debug("url "+url)
-        req_details = {"parameters":
-            [
-                "GlobalEcoActive",
-                "WifiRSSI",
-                "OutdoorTemp",
-                "HeatingWaterInletTemp",
-                "HeatingWaterRetTemp",
-                "HeatingWaterTempDiff",
-                "HeatingWaterFlow",
-                "CurrentPowerForHeatingHeatingWater"]
-            }
-        self._LOGGER.debug("update_params head "+str(self._session))
-        r = requests.post(url, headers=self._session, json=req_details)
-        self._params = r.json()
-        self._LOGGER.debug("update_params end")
-        return self._params
-
-    def update_diagnostic(self):
-        url = 'https://smartheat.airpatrol.eu/api/controllers/'+self._session['cid']+'/diagnostic'
-        r = requests.get(url, headers=self._session)
-        return r.json()
-
-    def update_zones(self):
-        url = 'https://smartheat.airpatrol.eu/api/controllers/'+self._session['cid']+'/zones'
-        r = requests.get(url, headers=self._session)
-        return r.json()
-
-    def update_sensors(self):
-        url = 'https://smartheat.airpatrol.eu/api/controllers/'+self._session['cid']+'/temperature-sensors'
-        r = requests.get(url, headers=self._session)
-        return r.json()

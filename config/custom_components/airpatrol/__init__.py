@@ -21,6 +21,8 @@ from homeassistant.const import (
     HTTP_UNAUTHORIZED,
     HTTP_NOT_FOUND,
 )
+from homeassistant.util import Throttle
+
 
 from config.custom_components.airpatrol_api import AirPatrol
 
@@ -54,12 +56,13 @@ async def async_setup(hass, config):
 
     if hass.data[DOMAIN].get_cid():  # make sure login was successful
         hass.helpers.discovery.load_platform("sensor", DOMAIN, {}, config)
+        hass.helpers.discovery.load_platform("climate", DOMAIN, {}, config)
 
     return True
 
 
 class AirPatrolDevice:
-    """thin HA-specific wrapper for device"""
+    """thin HA-specific wrapper for all device features"""
 
     def __init__(self, hass, config):
 
@@ -87,3 +90,4 @@ class AirPatrolDevice:
 
     def get_tempsensors(self):
         return self._device.get_tempsensors()
+

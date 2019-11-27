@@ -4,7 +4,14 @@ from datetime import timedelta
 
 ##import airpatrol
 
-from homeassistant.const import TEMP_CELSIUS, DEVICE_CLASS_BATTERY, DEVICE_CLASS_HUMIDITY, DEVICE_CLASS_POWER, DEVICE_CLASS_SIGNAL_STRENGTH, DEVICE_CLASS_TEMPERATURE
+from homeassistant.const import (
+    TEMP_CELSIUS,
+    DEVICE_CLASS_BATTERY,
+    DEVICE_CLASS_HUMIDITY,
+    DEVICE_CLASS_POWER,
+    DEVICE_CLASS_SIGNAL_STRENGTH,
+    DEVICE_CLASS_TEMPERATURE,
+)
 from homeassistant.helpers.entity import Entity
 
 from . import DOMAIN
@@ -15,9 +22,21 @@ from . import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 AIRPATROL_SENSORS = {
-    "CurrentPowerForHeatingHeatingWater": {"uom": "W", "icon": "mdi:flash-outline", "class": DEVICE_CLASS_POWER},
-    "HeatingWaterFlow": {"uom": "m³/h", "icon": "mdi:swap-vertical-circle-outline", "class": ""},
-    "WifiRSSI": {"uom": "dB", "icon": "mdi:antenna", "class": DEVICE_CLASS_SIGNAL_STRENGTH},
+    "CurrentPowerForHeatingHeatingWater": {
+        "uom": "W",
+        "icon": "mdi:flash-outline",
+        "class": DEVICE_CLASS_POWER,
+    },
+    "HeatingWaterFlow": {
+        "uom": "m³/h",
+        "icon": "mdi:swap-vertical-circle-outline",
+        "class": "",
+    },
+    "WifiRSSI": {
+        "uom": "dB",
+        "icon": "mdi:antenna",
+        "class": DEVICE_CLASS_SIGNAL_STRENGTH,
+    },
 }
 
 
@@ -65,23 +84,23 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         else:
             _LOGGER.debug("NA for tempsensor " + name)
 
-    # 3. zones
-    for zone in zones["zones"]:
-        num = zone["ZoneNumber"]
-        name = zone["name"]
-        zone_parameters = zone["Parameters"]
-        _LOGGER.debug("adding zone " + name)
-        for zone_param, value in zone_parameters.items():
-            if "HeatingStatus" == zone_param:
-                v = True if value == "1" else False
-            elif value.isnumeric():
-                v = float(value)
-            else:
-                v = value
-            _LOGGER.debug("adding zone_param " + zone_param)
-            sensor = AirPatrolSensor(device, name + ": " + zone_param, v)
-            _LOGGER.debug("added zone_param " + zone_param)
-            entities.append(sensor)
+    # 3. zones - enable if want as sensors also
+    #   for zone in zones["zones"]:
+    #       num = zone["ZoneNumber"]
+    #       name = zone["name"]
+    #       zone_parameters = zone["Parameters"]
+    #       _LOGGER.debug("adding zone " + name)
+    #       for zone_param, value in zone_parameters.items():
+    #           if "HeatingStatus" == zone_param:
+    #               v = True if value == "1" else False
+    #           elif value.isnumeric():
+    #               v = float(value)
+    #           else:
+    #               v = value
+    #           _LOGGER.debug("adding zone_param " + zone_param)
+    #           sensor = AirPatrolSensor(device, name + ": " + zone_param, v)
+    #           _LOGGER.debug("added zone_param " + zone_param)
+    #           entities.append(sensor)
 
     # 4. diagnostic - something wrong?
     # for param, value in diagnostic.items():
@@ -159,7 +178,7 @@ class AirPatrolSensor(Entity):
         return ""
 
     def update(self):
-        _LOGGER.debug("updating sensor " + self._name)
+      #  _LOGGER.debug("updating sensor " + self._name)
         self._device.update_all()
 
         # read latest data for all possible sensors
