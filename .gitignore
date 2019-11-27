@@ -1,5 +1,6 @@
 config/*
 config2/*
+!config/custom_components
 
 tests/testing_config/deps
 tests/testing_config/home-assistant.log
@@ -131,3 +132,23 @@ tmp_cache
 
 # python-language-server / Rope
 .ropeproject
+config/custom_components/example_light/__init__.py
+config/custom_components/example_light/light.py
+config/custom_components/example_light/manifest.json
+config/custom_components/example_light/README.md
+config/custom_components/example_sensor/__init__.py
+config/custom_components/example_sensor/manifest.json
+config/custom_components/example_sensor/README.md
+config/custom_components/example_sensor/sensor.py
+config/custom_components/expose_service_async/__init__.py
+config/custom_components/expose_service_async/manifest.json
+config/custom_components/expose_service_sync/__init__.py
+config/custom_components/expose_service_sync/manifest.json
+config/custom_components/hello_world/__init__.py
+config/custom_components/hello_world/manifest.json
+config/custom_components/hello_world_async/__init__.py
+config/custom_components/hello_world_async/manifest.json
+config/custom_components/mqtt_basic/__init__.py
+config/custom_components/mqtt_basic/manifest.json
+config/custom_components/mqtt_basic_async/__init__.py
+config/custom_components/mqtt_basic_async/manifest.json
